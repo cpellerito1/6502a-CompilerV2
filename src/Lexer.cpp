@@ -6,6 +6,7 @@
 // Blueprints
 bool isBoundry(std::string*);
 std::vector<Token*> stringLexer(std::string*);
+void trim(std::vector<Token*>&);
 
 // Counters for iterating over the input file
 int current = 0;
@@ -30,11 +31,15 @@ std::regex all{"[a-z|0-9]"};
 Token *tempToken;
 
 void Compiler::lexer(std::string *inputString) {
+    std::cout << "Beginning Lex for program " << counter << std::endl;
     // Vector to hold the token stream
     std::vector<Token*> tokenStream;
 
     // Error counter
     int errors = 0;
+
+    // String to store substrings of the inputString
+    std::string subString = "";
 
     // Loop over the char array
     while (current < inputString->size()) {
@@ -81,6 +86,7 @@ void Compiler::lexer(std::string *inputString) {
                     current += 2;
                 } else {
                     tokenStream.push_back(new Token(&line, current/line, "unrecognized token '!'", Token::Grammar::ERROR));
+                    errors++;
                     current++;
                 }
                 prev = current;
@@ -116,6 +122,7 @@ void Compiler::lexer(std::string *inputString) {
                 } else {
                     // If the next character is not *, then "/" is an invalid token
                     tokenStream.push_back(new Token(&line, current/line, "unrecognized token /", Token::Grammar::ERROR));
+                    errors++;
                     current++;
                     prev = current;
                     continue;
@@ -159,19 +166,149 @@ void Compiler::lexer(std::string *inputString) {
                 current = temp + 1;
                 prev = current;
                 continue;
+            } else if (inputString[current] == "(") {
+                tokenStream.push_back(new Token(&line, current/line, "(", Token::Grammar::L_PARAN));
+                current++;
+                prev = current;
+                continue;
+            } else if (inputString[current] == ")") {
+                tokenStream.push_back(new Token(&line, current/line, ")", Token::Grammar::R_PARAN));
+                current++;
+                prev = current;
+                continue;
+            } else if (inputString[current] == "$") {
+                tokenStream.push_back(new Token(&line, current/line, "$", Token::Grammar::EOP));
+                if (errors == 0) {
+                    // Remove warnings
+                    trim(tokenStream);
+                    // Begin parse
+                    //parseStart(tokenStream, counter);
+
+                } else {
+                    std::cout << "Skipping parse due to (" << errors << ") lex errors" << std::endl;
+                }
+
+                // Clear tokenStream for the next program
+                tokenStream.clear();
+                // Increment program counter
+                counter++;
+                continue;
+            } else {
+                // The current character is a white space
+                if (current + 1 < inputString->size()) {
+                    current++;
+                    prev++;
+                    continue;
+                } else {
+                    subString = inputString->substr(prev, current - prev);
+                }
             }
+        } else {
+            // Current character is not a boudry so add it to substring for regex matching
+            subString = inputString->substr(prev, (current - prev) + 1);
+        }
+
+        // Regex matching
+        // Keyword matcher (if, print, while)
+        if (regex_match(subString, keyword)) {
+            while (!regex_match(subString, keywordExact)) {
+                std::string temp(1, subString[0]);
+                // If it isnt an exact match, the chars in front of it must be IDs
+                tokenStream.push_back(new Token(&line, prev/line, temp, Token::Grammar::ID));
+                // Remove the char from the string
+                subString.erase(0, 1);
+                prev++;
+            }
+
+            // Add the keyword token
+            tokenStream.push_back(new Token(&line, prev/line, subString, Token::Grammar::KEYWORD));
+            current++;
+            prev = current;
+        } else if (regex_match(subString, type)) {
+            while (!regex_match(subString, typeExact)) {
+                std::string temp(1, subString[0]);
+                // If it isnt an exact match, the chars in front of it must be IDs
+                tokenStream.push_back(new Token(&line, prev/line, temp, Token::Grammar::ID));
+                // Remove the char from the string
+                subString.erase(0, 1);
+                prev++;
+            }
+
+            tokenStream.push_back(new Token(&line, prev/line, subString, Token::Grammar::TYPE));
+            current++;
+            prev = current;
+        } else if (regex_match(subString, boolean)) {
+            while (!regex_match(subString, boolExact)){
+                std::string temp(1, subString[0]);
+                // If it isnt an exact match, the chars in front of it must be IDs
+                tokenStream.push_back(new Token(&line, prev/line, temp, Token::Grammar::ID));
+                // Remove the char from the string
+                subString.erase(0, 1);
+                prev++;
+            }
+
+            tokenStream.push_back(new Token(&line, prev/line, subString, Token::Grammar::BOOL_VAL));
+            current++;
+            prev = current;
+        } else if (regex_match(subString, character)) {
+            if (current + 1 < inputString->size()) {
+                if (isBoundry(&inputString[current + 1]) || regex_match(inputString[current + 1], digit)) {
+                    // Next char is a boundry or number, this must be an id. Use a for loop
+                    // to create the tokens for other chars that may be in the subString
+                    for (int i = 0; i < subString.size(); i++, prev++) {
+                        std::string temp(1, subString[i]); 
+                        tokenStream.push_back(new Token(&line, prev/line, temp, Token::Grammar::ID));
+                    }
+
+                    current++;
+                    prev = current;
+                } else {
+                    // If not a boundry or digit, increment and move to next char
+                    current++;
+                }
+            } else {
+                tokenStream.push_back(new Token(&line, prev/line, subString, Token::Grammar::ID));
+                current++;
+            }
+        } else if (regex_match(subString, digit)) {
+            tokenStream.push_back(new Token(&line, prev/line, subString, Token::Grammar::DIGIT));
+            current++;
+            prev = current;
+        } else {
+            current++;
+        }
+    }
+
+    // Make sure tokenStream is empty and the last token in there is an EOP. If not throw a warning and add the
+    // EOP assuming the user meant to put one as this is the end of the file
+    if (!tokenStream.empty() && tokenStream.back()->type == Token::Grammar::EOP) {
+        tokenStream.push_back(new Token(&line, current/line, 
+                    "file ended with no end of program symbol($), EOP inserted here", Token::Grammar::WARNING));
+        tokenStream.push_back(new Token(&line, (current+1)/line, "$", Token::Grammar::EOP));
+
+        for (auto t: tokenStream) {
+            t->toString();
+        }
+
+        if (errors == 0) {
+            // Remove warnings from tokenStream so parse doesnt have to deal with them
+            trim(tokenStream);
+
+            // Begin parse
+            std::cout << "Beginning parse for program " << counter;
+            //parseStart(tokenStream, counter);
+        } else {
+            std::cout << "Skipping parse for program " << counter << " due to (" << errors << ") lex errors";
         }
     }
 }
 
 
 
-bool isBoundry(std::string *input) { 
-    char operators[] = {'=', '!', '\n', ' ', '{', '}', '$', '/', '"', '+', '(', ')'};
-    for (char op: operators) {
-        std::string opS(1, op);
-
-        if (opS == *input)
+bool isBoundry(std::string *input) {
+    std::string operators[] = {"=", "!", "\n", " ", "{", "}", "$", "/", "\"", "+", "(", ")"};
+    for (std::string op: operators) {
+        if (op == *input)
             return true;
     }
 
@@ -202,5 +339,22 @@ std::vector<Token*> stringLexer(std::string *input) {
     }
 
     return temp;
+}
+
+
+
+void trim(std::vector<Token*> &tokenStream) {
+    // std::vector<Token*>::iterator it;
+    // for (it = tokenStream.begin(); it != tokenStream.end(); it++) {
+    //     if (**it->type == Token::Grammar::WARNING)
+    //         tokenStream.erase(it);
+    // }
+
+     for (int i = 0; i < tokenStream.size(); i++) {
+        if (tokenStream[i]->type == Token::Grammar::WARNING)
+            tokenStream.erase(tokenStream.begin() + (i-1));
+    }
+
+    tokenStream.shrink_to_fit();
 }
 

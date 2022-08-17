@@ -5,10 +5,11 @@
 class Token {
     public:
         enum Grammar {
-        TYPE, L_BRACE, R_BRACE, ID, CHAR, BOOL_VAL, ADD_OP, EQUAL_OP, ASSIGN_OP,
-        IN_EQUAL_OP, ERROR, EOP, DIGIT, WARNING, SPACE, L_QUOTE, R_QUOTE, R_PARAN, L_PARAN,
-        KEYWORD, STRING
-    };
+            TYPE, L_BRACE, R_BRACE, ID, CHAR, BOOL_VAL, ADD_OP, EQUAL_OP, ASSIGN_OP,
+            IN_EQUAL_OP, ERROR, EOP, DIGIT, WARNING, SPACE, L_QUOTE, R_QUOTE, R_PARAN, L_PARAN,
+            KEYWORD, STRING
+        };
+
         // Attributes
         int *line;
         int pos;
