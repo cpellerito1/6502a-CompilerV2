@@ -1,9 +1,10 @@
 #include <string>
-#include "Token.cpp"
+#include <iostream>
+#include "Token.h"
 
 class Compiler {
     public:
-        void lexer(std::string*);
+        void lexer(std::string&);
 
 
 };
