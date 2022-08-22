@@ -159,7 +159,7 @@ void Compiler::lexer(std::string &inputString) {
                     tempToken = NULL;
                 } else {
                     // Quote was valid and terminated so call stringLexer and add the tokens to the tokenStream
-                    std::string s = inputString.substr(temp, current - temp);
+                    std::string s = inputString.substr(current, temp - current);
                     std::vector<Token*> stringTokens = stringLexer(s);
                     tokenStream.insert(tokenStream.end(), stringTokens.begin(), stringTokens.end());
                 }
