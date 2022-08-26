@@ -1,11 +1,10 @@
 #include "Compiler.h"
-#include <iostream>
 #include <regex>
 #include <vector>
 
 // Blueprints
 bool isBoundry(char);
-std::vector<Token*> stringLexer(std::string&);
+std::vector<Token*>* stringLexer(std::string&);
 void trim(std::vector<Token*>&);
 
 // Counters for iterating over the input file
@@ -14,7 +13,7 @@ int prev = 0;
 int line = 1;
 
 // Program counter
-int counter = 0;
+int programCounter = 0;
 
 // Regular expression definitions
 std::regex type("int|string|boolean");
@@ -31,7 +30,7 @@ std::regex all{"[a-z|0-9]"};
 Token *tempToken;
 
 void Compiler::lexer(std::string &inputString) {
-    std::cout << "Beginning Lex for program " << counter << std::endl;
+    std::cout << "Beginning Lex for program " << programCounter << std::endl;
     // Vector to hold the token stream
     std::vector<Token*> tokenStream;
 
@@ -144,26 +143,26 @@ void Compiler::lexer(std::string &inputString) {
 
                 // Fill temp token for unclosed quote warning
                 tempToken = new Token(line, current/line, "unclosed quote at end of file", Token::Grammar::WARNING);
-                // Temp counter to keep line positioning correct
-                int temp = current;
+                // Temp indexCounter counter to keep line positioning correct
+                int indexCounter = current;
                 // Loop through the inputString to find end of quote
-                while (temp < inputString.size()) {
-                    if (inputString[temp] == '\"')
+                while (indexCounter < inputString.size()) {
+                    if (inputString[indexCounter] == '\"')
                         break;
                     else
-                        temp++;
+                        indexCounter++;
                 }
-                // Again check if temp is greater than the size of the inputString
-                if (temp >= inputString.size()) {
+                // Again check if indexCounter is greater than the size of the inputString
+                if (indexCounter >= inputString.size()) {
                     tokenStream.push_back(tempToken);
                     tempToken = NULL;
                 } else {
                     // Quote was valid and terminated so call stringLexer and add the tokens to the tokenStream
-                    std::string s = inputString.substr(current, temp - current);
-                    std::vector<Token*> stringTokens = stringLexer(s);
-                    tokenStream.insert(tokenStream.end(), stringTokens.begin(), stringTokens.end());
+                    std::string s = inputString.substr(current, indexCounter - current);
+                    std::vector<Token*>* stringTokens = stringLexer(s);
+                    tokenStream.insert(tokenStream.end(), stringTokens->begin(), stringTokens->end());
                 }
-                current = temp + 1;
+                current = indexCounter + 1;
                 prev = current;
                 continue;
             } else if (inputString[current] == '(') {
@@ -189,7 +188,7 @@ void Compiler::lexer(std::string &inputString) {
                     // Remove warnings
                     trim(tokenStream);
                     // Begin parse
-                    //parseStart(tokenStream, counter);
+                    //parseStart(tokenStream, programCounter);
 
                 } else {
                     std::cout << "Skipping parse due to (" << errors << ") lex errors" << std::endl;
@@ -198,7 +197,7 @@ void Compiler::lexer(std::string &inputString) {
                 // Clear tokenStream for the next program
                 tokenStream.clear();
                 // Increment program counter
-                counter++;
+                programCounter++;
                 continue;
             } else {
                 // The current character is a white space
@@ -302,10 +301,10 @@ void Compiler::lexer(std::string &inputString) {
             trim(tokenStream);
 
             // Begin parse
-            std::cout << "Beginning parse for program " << counter;
-            //parseStart(tokenStream, counter);
+            std::cout << "Beginning parse for program " << programCounter;
+            //parseStart(tokenStream, programCounter);
         } else {
-            std::cout << "Skipping parse for program " << counter << " due to (" << errors << ") lex errors";
+            std::cout << "Skipping parse for program " << programCounter << " due to (" << errors << ") lex errors";
         }
     }
 }
@@ -322,24 +321,24 @@ bool isBoundry(char input) {
 }
 
 
-std::vector<Token*> stringLexer(std::string &input) {
-    std::vector<Token*> temp;
+std::vector<Token*>* stringLexer(std::string &input) {
+    std::vector<Token*>* temp;
 
     for (int i = 0; i < input.size(); i++) {
         if (regex_match(input.substr(i, 1), character)) {
             std::string s(1, input[i]);
-            temp.push_back(new Token(line, current/line, s, Token::Grammar::CHAR));
+            temp->push_back(new Token(line, current/line, s, Token::Grammar::CHAR));
         } else if (input[i] == ' ')
-            temp.push_back(new Token(line, current/line, " ", Token::Grammar::SPACE));
+            temp->push_back(new Token(line, current/line, " ", Token::Grammar::SPACE));
         else if (input[i] == '\n') {
-            temp.push_back(new Token(line, current/line, "string can't have new line character", Token::Grammar::ERROR));
+            temp->push_back(new Token(line, current/line, "string can't have new line character", Token::Grammar::ERROR));
             line++;
         } else if (input[i] == '$') {
-            temp.push_back(new Token(line, current/line, "possible unclosed string", Token::Grammar::WARNING));
-            temp.push_back(new Token(line, current/line, "unrecognized token $ in string", Token::Grammar::ERROR));
+            temp->push_back(new Token(line, current/line, "possible unclosed string", Token::Grammar::WARNING));
+            temp->push_back(new Token(line, current/line, "unrecognized token $ in string", Token::Grammar::ERROR));
         } else {
             std::string s(1, input[i]);
-            temp.push_back(new Token(line, current/line, "unexpected token \"" + s + "\"", Token::Grammar::ERROR));
+            temp->push_back(new Token(line, current/line, "unexpected token \"" + s + "\"", Token::Grammar::ERROR));
         }
 
         // Keep current = i so line positioning is correct
