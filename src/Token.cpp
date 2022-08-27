@@ -16,3 +16,8 @@ void Token::toString() {
                         " ] found at (" << line << ":" << pos << ")\n";
             }
         }
+
+// Used to get the string value of Grammar enum from outside of the token class
+std::string Token::grammarToString(Token::Grammar type) {
+    return enumStrings[type];
+}

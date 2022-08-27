@@ -25,4 +25,5 @@ class Token {
 
         // Methods
         void toString(void);
+        static std::string grammarToString(Token::Grammar);
 };
