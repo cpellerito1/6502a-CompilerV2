@@ -1,6 +1,5 @@
 #include "Compiler.h"
 #include <regex>
-#include <vector>
 
 // Blueprints
 bool isBoundry(char);
@@ -8,7 +7,7 @@ std::vector<Token*>* stringLexer(std::string&);
 void trim(std::vector<Token*>&);
 
 // Counters for iterating over the input file
-int current = 0;
+static int current = 0;
 int prev = 0;
 int line = 1;
 
@@ -159,7 +158,7 @@ void Compiler::lexer(std::string &inputString) {
                 } else {
                     // Quote was valid and terminated so call stringLexer and add the tokens to the tokenStream
                     std::string s = inputString.substr(current, indexCounter - current);
-                    std::vector<Token*>* stringTokens = stringLexer(s);
+                    std::vector<Token*> *stringTokens = stringLexer(s);
                     tokenStream.insert(tokenStream.end(), stringTokens->begin(), stringTokens->end());
                 }
                 current = indexCounter + 1;
@@ -180,15 +179,13 @@ void Compiler::lexer(std::string &inputString) {
                 current++;
                 prev = current;
                 if (errors == 0) {
-                    for (int i = 0; i < tokenStream.size(); i++) {
-                        Token t = *tokenStream[i];
-                        t.toString();
+                    for (auto t: tokenStream) {
+                        t->toString();
                     }
-
                     // Remove warnings
                     trim(tokenStream);
                     // Begin parse
-                    //parseStart(tokenStream, programCounter);
+                    parse(tokenStream, programCounter);
 
                 } else {
                     std::cout << "Skipping parse due to (" << errors << ") lex errors" << std::endl;
@@ -301,8 +298,7 @@ void Compiler::lexer(std::string &inputString) {
             trim(tokenStream);
 
             // Begin parse
-            std::cout << "Beginning parse for program " << programCounter;
-            //parseStart(tokenStream, programCounter);
+            parse(tokenStream, programCounter);
         } else {
             std::cout << "Skipping parse for program " << programCounter << " due to (" << errors << ") lex errors";
         }

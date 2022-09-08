@@ -26,7 +26,7 @@ class Tree {
         };
 
         void addNode(std::string name, Kind k, void *t = nullptr) {
-            Node* n = new Node(name, t);
+            struct Node* n = new Node(name, t);
             if (k == Kind::ROOT || root == nullptr) {
                 this->root = n;
                 this->current = n;
@@ -67,14 +67,11 @@ class Tree {
         }
 
         void restructure() {
-            // Create variable for the children of the current node's parent
+            // Create variable for the children of the current node
             std::vector<Node*> pChildren = this->current->parent->children;
-            // Get iterator to the current node in pChildren
-            std::vector<Node*>::iterator it = std::find(pChildren.begin(), pChildren.end(), this->current);
-            // Set the iterator 1 element to the left
-            it--;
-            // Get the index of that element
-            //int index = it - pChildren.begin();
+            // Get iterator to the 2nd to last node in curChildren
+            std::vector<Node*>::iterator it = std::find(pChildren.end(), pChildren.begin(), this->current) + 1;
+            //std::vector<Node*>::iterator it = pChildren.back();
             // Then add that element to the current nodes children
             this->current->children.push_back(*it);
             // Finally remove the child you just added to the current nodes children from pChildren
