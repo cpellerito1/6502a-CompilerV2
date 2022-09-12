@@ -306,7 +306,13 @@ void Compiler::lexer(std::string &inputString) {
 }
 
 
-
+/**
+ * @brief 
+ * 
+ * @param input 
+ * @return true 
+ * @return false 
+ */
 bool isBoundry(char input) {
     char operators[] = {'=', '!', '\n', ' ', '{', '}', '$', '/', '\"', '+', '(', ')'};
     for (char op: operators) {

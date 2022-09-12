@@ -1,14 +1,23 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 
 class Tree {
-    private:
+    public:
+        enum Kind {
+            ROOT, BRANCH, LEAF
+        };
+
         struct Node {
             std::string name;
             Node* parent;
             std::vector<Node*> children;
             void *token;
+            // For symbol table
+            std::unordered_map<std::string, Node*> st;
+            bool isUsed = false;
+            bool isInit = false;
 
             Node(std::string name, void *token = nullptr) {
                 this->name = name;
@@ -19,11 +28,6 @@ class Tree {
         // pointers to root and current nodes
         Node* root;
         Node* current;
-
-    public:
-        enum Kind {
-            ROOT, BRANCH, LEAF
-        };
 
         void addNode(std::string name, Kind k, void *t = nullptr) {
             struct Node* n = new Node(name, t);
@@ -67,11 +71,10 @@ class Tree {
         }
 
         void restructure() {
-            // Create variable for the children of the current node
-            std::vector<Node*> pChildren = this->current->parent->children;
-            // Get iterator to the 2nd to last node in curChildren
+            // Create variable for the children of the parent
+            std::vector<Node*> &pChildren = this->current->parent->children;
+            // Get iterator to the 2nd to last node in pChildren
             std::vector<Node*>::iterator it = std::find(pChildren.end(), pChildren.begin(), this->current) + 1;
-            //std::vector<Node*>::iterator it = pChildren.back();
             // Then add that element to the current nodes children
             this->current->children.push_back(*it);
             // Finally remove the child you just added to the current nodes children from pChildren

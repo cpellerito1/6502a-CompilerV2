@@ -8,7 +8,7 @@ static int current;
 // Variable to hold error state, parse doesn't care how many errors just if there are so use bool
 bool isErrors;
 // AST
-Tree ast;
+static Tree ast;
 // Help turn charLists to strings
 std::string charToString = "";
 
