@@ -30,8 +30,8 @@ class Tree {
         Node* current;
 
         void addNode(std::string name, Kind k, void *t = nullptr) {
-            struct Node* n = new Node(name, t);
-            if (k == Kind::ROOT || root == nullptr) {
+            Node* n = new Node(name, t);
+            if (this->root == nullptr) {
                 this->root = n;
                 this->current = n;
             } else {

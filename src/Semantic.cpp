@@ -1,12 +1,13 @@
 #include "Compiler.h"
-#include <regex>
+#include <unordered_map>
+#include <vector>
 
 // Global variables
 static Tree ast;
 int scope;
 bool errors;
 //Symbol Table
-Tree symbol;
+static Tree symbol;
 
 // Blueprints
 void traverse(Tree::Node*);
@@ -20,16 +21,27 @@ void checkExpr(Tree::Node*);
 void checkAdd(Tree::Node*);
 void checkBoolExpr(Tree::Node*);
 void* findSymbol(Tree::Node*);
-bool checkType(Tree::Node*, std::string);
 std::string getType(Tree::Node*);
+std::vector<std::string> printSymbolTable(Tree::Node*);
 
 
-void Compiler::semanticAnalysis(Tree &t, int programCounter) {
+void Compiler::semanticAnalysis(Tree &t, int &programCounter) {
+    std::cout << "Beginning Semantic Analysis for program " << programCounter << '\n';
     ast = t;
     scope = 0;
     errors = false;
     // Traverse the AST starting from root
-    traverse(ast.root);
+   traverse(ast.root);
+
+    if (errors == false) {
+        // Print symbol table
+        std::cout << "Printing Symbol Table...\nID | Type | Scope | Line\n";
+        std::vector<std::string> warnings = printSymbolTable(symbol.root);
+        for (std::vector<std::string>::iterator itr = warnings.begin(); itr != warnings.end(); itr++)
+            std::cout << *itr << '\n';
+        std::cout << "Semantic anlaysis for program " << programCounter << " finished successfully\n";
+        //codeGen(ast, programCounter);
+    }
 }
 
 
@@ -49,7 +61,7 @@ void traverse(Tree::Node *node) {
         checkPrint(node);
     }
 
-    if (node->children.empty()) {
+    if (!node->children.empty()) {
         for (auto c: node->children)
             traverse(c);
     }
@@ -61,11 +73,10 @@ void traverse(Tree::Node *node) {
 
 void checkBlock(Tree::Node *node) {
     scope++;
-    std::string s(scope, 1);
     if (symbol.root == nullptr) {
-        symbol.addNode(s, Tree::Kind::ROOT);
+        symbol.addNode(std::to_string(scope), Tree::Kind::ROOT);
     } else {
-        symbol.addNode(s, Tree::Kind::BRANCH);
+        symbol.addNode(std::to_string(scope), Tree::Kind::BRANCH);
     }
 }
 
@@ -74,7 +85,7 @@ void checkVarDecl(Tree::Node *node) {
     Tree::Node *id = node->children.at(1);
 
     // Check if variable is in symbol table in the current scope
-    if (symbol.current->st.find(id->name) == symbol.current->st.end()) {
+    if (symbol.current->st.find(id->name) != symbol.current->st.end()) {
         Token *t = (Token*)id->token;
         std::cout << "Error: Variable (" << t->value << ") already decalred in this scope on line " << 
             t->line << ":" << t->pos << '\n';
@@ -94,29 +105,24 @@ void checkAssign(Tree::Node *node) {
         Token *t = (Token*)id->token;
         std::cout << "Error: Variable (" << id->name << ") undeclared on line " << t->line << ":" << t->pos << '\n';
     } else {
+        // Set the isInit to true
+        Tree::Node *n = (Tree::Node*) s;
+        n->st[id->name]->isInit = true;
         // Since it is in current or parent scope, check the expression
         checkExpr(val);
-        // std::string type = getType(val);
-        // // Convert s to Node*
-        // Tree::Node *np = (Tree::Node*)s;
-        // if (!checkType(id, type)) {
-        //     Token *t = (Token*)id->token;
-        //     std::cout << "Error: Type mismatch on line " << t->line << ":" << t->pos << " can't assign type (" << 
-        //         type << ") to variable of type (" << np->name << ")\n";
-        // }
     }
 }
 
 void checkWhile(Tree::Node *node) {
-
+    checkBoolExpr(node->children.at(0));
 }
 
 void checkIf(Tree::Node *node) {
-
+    checkBoolExpr(node->children.at(0));
 }
 
 void checkPrint(Tree::Node *node) {
-
+    checkExpr(node->children.at(0));
 }
 
 void checkExpr(Tree::Node *node) {
@@ -146,36 +152,56 @@ void checkAdd(Tree::Node *node) {
             std::cout << "Error: Incompatible types on line " << child1Token->line << ":" << child1Token->pos <<
                 " can't add types int and " << getType(child2) << '\n';
             errors = true;
-        } else {
-            checkAdd(child2);
+            return;
         }
+
+        // checkAdd if it is an add statement
+        checkAdd(child2);
+        return;
+    }
+
+    // Since there is a token first check if it is a digit, if it is do nothing
+    // If it is an id check its type and if it is anythin else print an error
+    Token *child2Token = (Token*)child2->token;
+    if (child2Token->type != Token::Grammar::DIGIT || child2Token->type != Token::Grammar::ID) {
+        std::cout << "Error: Incompatible types on line " << child2Token->line << " can't add types int and " << 
+            Token::grammarToString(child2Token->type) << '\n';
+        errors = true;
     } else {
-        // Since there is a token first check if it is a digit, if it is do nothing
-        // If it is an id check its type and if it is anythin else print an error
-        Token *child2Token = (Token*)child2->token;
-        if (child2Token->type != Token::Grammar::DIGIT || child2Token->type != Token::Grammar::ID) {
-            std::cout << "Error: Incompatible types on line " << child2Token->line << " can't add types int and " << 
-                Token::grammarToString(child2Token->type) << '\n';
-            errors = true;
-        } else {
-            // Now check if it is an id, if it is we need to first check if it was declared and then if it is an int
-            if (child2Token->type == Token::Grammar::ID) {
-                if (findSymbol(child2) == nullptr) {
-                    std::cout << "Error: Undeclared variable (" << child2->name << ") on line " <<
-                        child2Token->line << ":" << child2Token->pos << '\n';
-                    errors = true;
-                } else if (getType(child2) != "int") {
-                    std::cout << "Error: Incompatible types on line " << child2Token->line << " can't add types int and " << 
-                        Token::grammarToString(child2Token->type) << '\n';
-                    errors = true;
-                }
+        // Now check if it is an id, if it is we need to first check if it was declared and then if it is an int
+        if (child2Token->type == Token::Grammar::ID) {
+            if (findSymbol(child2) == nullptr) {
+                std::cout << "Error: Undeclared variable (" << child2->name << ") on line " <<
+                    child2Token->line << ":" << child2Token->pos << '\n';
+                errors = true;
+            } else if (getType(child2) != "int") {
+                std::cout << "Error: Incompatible types on line " << child2Token->line << " can't add types int and " << 
+                    Token::grammarToString(child2Token->type) << '\n';
+                errors = true;
             }
         }
     }
 }
 
 void checkBoolExpr(Tree::Node *node) {
-
+    if (node->children.size() > 1) {
+        std::string child1Type = getType(node->children.at(0));
+        std::string child2Type = getType(node->children.at(1));
+        if (child1Type != child2Type) {
+            Token *t = (Token*)node->children.at(0)->token;
+            std::cout << "Error: Type mismatch on line " << t->line << " can't compare values of type " <<
+                child1Type << " and " << child2Type << '\n';
+            errors = true;
+        }
+    } else if (node->children.size() == 1) {
+        std::string type = getType(node->children.at(0));
+        if (type != "boolean") {
+            Token *t = (Token*)node->children.at(0)->token;
+            std::cout << "Error: Invalid type on line " << t->line << " literals in a boolean expression " <<
+                "must be of type boolean not " << type << '\n';
+            errors = true;
+        }
+    }
 }
 
 /**
@@ -200,14 +226,13 @@ void* findSymbol(Tree::Node *id) {
 }
 
 
-bool checkType(Tree::Node* id, std::string type) {
-    // Get the node of the symbol table where the id is located
-    // Since this will only ever be called after the ID was verified the void* can be cast to a Node*
-    Tree::Node *s = (Tree::Node*)findSymbol(id);
-    return (s->name == type);
-}
-
-
+/**
+ * @brief This function gets the type of a node. For add statements it returns int because you can only
+ * add ints together and bool exprs return boolean.
+ * 
+ * @param node 
+ * @return std::string representation of the type (int, boolean, or string)
+ */
 std::string getType(Tree::Node* node) {
     if (node->token != nullptr) {
         Token *t = (Token*)node->token;
@@ -223,4 +248,39 @@ std::string getType(Tree::Node* node) {
         return "boolean";
     else
         return "string";
+}
+
+
+/**
+ * @brief This function prints the symbol table
+ * 
+ * @param node node of symbol table to print
+ */
+std::vector<std::string> printSymbolTable(Tree::Node *node) {
+    // Pointer to string vector to hold the warnings
+    std::vector<std::string> warnings;
+    if (!node->st.empty()) {
+        std::unordered_map<std::string, Tree::Node*>::iterator itr;
+        for (itr = node->st.begin(); itr != node->st.end(); itr++) {
+            Token *t = (Token*)itr->second->token;
+            // Add warnings to temp vector for later output
+            if (itr->second->isInit) {
+                warnings.push_back("Warning: Variable (" + itr->first + ") is declared on line " + 
+                    std::to_string(t->line) + " but uninitialized");
+            } else if (itr->second->isUsed == false && itr->second->isInit == true) {
+                warnings.push_back("Warning: Variable (" + itr->first + ") is initialized but unused");
+            }
+
+            // Finally actually print the value of the sybol table
+            std::cout << itr->first << "    " << itr->second->name << "      " << node->name <<
+                "       " << std::to_string(t->line) << '\n';
+        }
+    }
+    // Recursivley call function for all the children of the node
+    for (auto child: node->children) {
+        std::vector<std::string> s = printSymbolTable(child);
+        warnings.insert(warnings.end(), s.begin(), s.end());
+    }
+
+    return warnings;
 }

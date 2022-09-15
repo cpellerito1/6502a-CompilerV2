@@ -42,7 +42,7 @@ void matchString(std::string);
  * @param tokens 
  * @param programCounter 
  */
-void Compiler::parse(std::vector<Token*> &tokens, int programCounter) {
+void Compiler::parse(std::vector<Token*> &tokens, int &programCounter) {
     // Set the global variables and reset the counters from previous programs
     tokenStream = tokens;
     current = 0;
@@ -55,10 +55,8 @@ void Compiler::parse(std::vector<Token*> &tokens, int programCounter) {
     if (!isErrors) {
         std::cout << "Parse finished successfully...\n\nPrinting AST...\n";
         std::cout << ast.toString();
+        Compiler::semanticAnalysis(ast, programCounter);
     }
-
-
-
 }
 
 
@@ -81,8 +79,6 @@ void parseStateList() {
         parseState();
         parseStateList();
     }
-
-    ast.moveUp();
 }
 
 void parseState() {
@@ -101,8 +97,6 @@ void parseState() {
         parseVarDecl();
     else
         parseBlock();
-    
-    ast.moveUp();
 }
 
 void parseVarDecl() {
@@ -159,8 +153,6 @@ void parseExpr() {
         default:
             match(Token::Grammar::ID);
     }
-
-    ast.moveUp();
 }
 
 void parseBoolExpr() {
@@ -181,11 +173,10 @@ void parseBoolExpr() {
         }
         parseExpr();
         match(Token::Grammar::R_PARAN);
+        ast.moveUp();
     } else {
         match(Token::Grammar::BOOL_VAL);
     }
-
-    ast.moveUp();
 }
 
 void parseStringExpr() {
@@ -222,9 +213,9 @@ void parseIntExpr() {
         ast.addNode("Add", Tree::Kind::BRANCH);
         ast.restructure();
         parseExpr();
+        ast.moveUp();
     } 
 
-    ast.moveUp();
 }
 
 void parseWhile() {
