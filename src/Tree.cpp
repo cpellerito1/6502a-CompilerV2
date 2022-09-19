@@ -14,10 +14,6 @@ class Tree {
             Node* parent;
             std::vector<Node*> children;
             void *token;
-            // For symbol table
-            std::unordered_map<std::string, Node*> st;
-            bool isUsed = false;
-            bool isInit = false;
 
             Node(std::string name, void *token = nullptr) {
                 this->name = name;

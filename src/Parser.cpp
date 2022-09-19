@@ -278,7 +278,6 @@ void match(Token::Grammar expected) {
 void matchString(std::string expected) {
     Token *t = tokenStream.at(current);
     if (t->value == expected) {
-        ast.addNode(t->value, Tree::Kind::BRANCH, t);
         current++;
     } else {
         // Check if the value of the current token is one of the keywords for correct error output
