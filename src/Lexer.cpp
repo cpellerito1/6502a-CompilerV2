@@ -3,13 +3,14 @@
 
 // Blueprints
 bool isBoundry(char);
-std::vector<Token*>* stringLexer(std::string&);
+std::vector<Token*> stringLexer(std::string&);
 void trim(std::vector<Token*>&);
 
 // Counters for iterating over the input file
 static int current = 0;
 int prev = 0;
 int line = 1;
+int inputSize;
 
 // Program counter
 int programCounter = 0;
@@ -29,6 +30,9 @@ std::regex all{"[a-z|0-9]"};
 Token *tempToken;
 
 void Compiler::lexer(std::string &inputString) {
+    // Set inputSize variable
+    inputSize = inputString.size();
+    std::cout << "size: " << inputSize << std::endl;
     std::cout << "Beginning Lex for program " << programCounter << std::endl;
     // Vector to hold the token stream
     std::vector<Token*> tokenStream;
@@ -158,8 +162,10 @@ void Compiler::lexer(std::string &inputString) {
                 } else {
                     // Quote was valid and terminated so call stringLexer and add the tokens to the tokenStream
                     std::string s = inputString.substr(current, indexCounter - current);
-                    std::vector<Token*> *stringTokens = stringLexer(s);
-                    tokenStream.insert(tokenStream.end(), stringTokens->begin(), stringTokens->end());
+                    std::vector<Token*> stringTokens = stringLexer(s);
+                    tokenStream.insert(tokenStream.end(), stringTokens.begin(), stringTokens.end());
+                    // Add closing quote
+                    tokenStream.push_back(new Token(line, current/line, "\"", Token::Grammar::R_QUOTE));
                 }
                 current = indexCounter + 1;
                 prev = current;
@@ -184,17 +190,17 @@ void Compiler::lexer(std::string &inputString) {
                     }
                     // Remove warnings
                     trim(tokenStream);
+                    // Print new line before parse
+                    puts("");
                     // Begin parse
                     parse(tokenStream, programCounter);
 
                 } else {
-                    std::cout << "Skipping parse due to (" << errors << ") lex errors" << std::endl;
+                    std::cout << "Skipping parse due to (" << errors << ") lex errors\n" << std::endl;
                 }
 
                 // Clear tokenStream for the next program
                 tokenStream.clear();
-                // Increment program counter
-                programCounter++;
                 continue;
             } else {
                 // The current character is a white space
@@ -300,18 +306,18 @@ void Compiler::lexer(std::string &inputString) {
             // Begin parse
             parse(tokenStream, programCounter);
         } else {
-            std::cout << "Skipping parse for program " << programCounter << " due to (" << errors << ") lex errors";
+            std::cout << "Skipping parse for program " << programCounter << " due to (" << errors << ") lex errors\n";
         }
     }
 }
 
 
 /**
- * @brief 
+ * @brief Checks if a character is a boundry
  * 
- * @param input 
- * @return true 
- * @return false 
+ * @param input char from inputArray
+ * @return true if is boundry
+ * @return false if not boudry
  */
 bool isBoundry(char input) {
     char operators[] = {'=', '!', '\n', ' ', '{', '}', '$', '/', '\"', '+', '(', ')'};
@@ -323,24 +329,32 @@ bool isBoundry(char input) {
 }
 
 
-std::vector<Token*>* stringLexer(std::string &input) {
-    std::vector<Token*>* temp;
+/**
+ * @brief This is a convience function. It performs lexical anlaysis on a string. The string will be parsed
+ * in the main lexer function and then passed to here. This helps reduce nested logic so the main lexing
+ * does not have to worry about if every character it finds is inside a string
+ * 
+ * @param input string reference to the string parsed from the inputArray
+ * @return std::vector<Token*>* pointer to the vector containing the tokens to be added to tokenStream
+ */
+std::vector<Token*> stringLexer(std::string &input) {
+    std::vector<Token*> temp;
 
     for (int i = 0; i < input.size(); i++) {
         if (regex_match(input.substr(i, 1), character)) {
             std::string s(1, input[i]);
-            temp->push_back(new Token(line, current/line, s, Token::Grammar::CHAR));
+            temp.push_back(new Token(line, current/line, s, Token::Grammar::CHAR));
         } else if (input[i] == ' ')
-            temp->push_back(new Token(line, current/line, " ", Token::Grammar::SPACE));
+            temp.push_back(new Token(line, current/line, " ", Token::Grammar::SPACE));
         else if (input[i] == '\n') {
-            temp->push_back(new Token(line, current/line, "string can't have new line character", Token::Grammar::ERROR));
+            temp.push_back(new Token(line, current/line, "string can't have new line character", Token::Grammar::ERROR));
             line++;
         } else if (input[i] == '$') {
-            temp->push_back(new Token(line, current/line, "possible unclosed string", Token::Grammar::WARNING));
-            temp->push_back(new Token(line, current/line, "unrecognized token $ in string", Token::Grammar::ERROR));
+            temp.push_back(new Token(line, current/line, "possible unclosed string", Token::Grammar::WARNING));
+            temp.push_back(new Token(line, current/line, "unrecognized token $ in string", Token::Grammar::ERROR));
         } else {
             std::string s(1, input[i]);
-            temp->push_back(new Token(line, current/line, "unexpected token \"" + s + "\"", Token::Grammar::ERROR));
+            temp.push_back(new Token(line, current/line, "unexpected token \"" + s + "\"", Token::Grammar::ERROR));
         }
 
         // Keep current = i so line positioning is correct
@@ -351,19 +365,24 @@ std::vector<Token*>* stringLexer(std::string &input) {
 }
 
 
-
+/**
+ * @brief This function removes the warnings from the tokenStream. This is done when there are warnings
+ * but no errors since the tokens will be be passed to parse. This makes it so parse does not have to
+ * deal with warning tokens
+ * 
+ * @param tokenStream 
+ */
 void trim(std::vector<Token*> &tokenStream) {
-    // std::vector<Token*>::iterator it;
-    // for (it = tokenStream.begin(); it != tokenStream.end(); it++) {
-    //     if (**it->type == Token::Grammar::WARNING)
-    //         tokenStream.erase(it);
-    // }
-
      for (int i = 0; i < tokenStream.size(); i++) {
         if (tokenStream[i]->type == Token::Grammar::WARNING)
             tokenStream.erase(tokenStream.begin() + (i-1));
     }
 
     tokenStream.shrink_to_fit();
+}
+
+
+bool Compiler::isFinished() {
+    return current + 1 >= inputSize;
 }
 

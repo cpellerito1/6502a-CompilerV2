@@ -1,6 +1,7 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include "Token.h"
 
 
 class SymbolTable {
@@ -8,11 +9,11 @@ class SymbolTable {
         struct SymbolNode {
             std::string type;
             int scope;
-            void *token;
+            Token *token;
             bool isInit = false;
             bool isUsed = false;
 
-            SymbolNode(std::string type, int scope, void *token) {
+            SymbolNode(std::string type, int scope, Token *token) {
                 this->type = type;
                 this->scope = scope;
                 this->token = token;
@@ -20,7 +21,7 @@ class SymbolTable {
         };
 
         struct Node {
-            Node* parent;
+            Node* parent = nullptr;
             std::vector<Node*> children;
             std::unordered_map<std::string, SymbolNode*> st;
         };
@@ -30,7 +31,7 @@ class SymbolTable {
 
         void addNode() {
             Node *n = new Node;
-            if (root == nullptr) {
+            if (this->root == nullptr) {
                 this->root = n;
                 this->current = n;
             } else {

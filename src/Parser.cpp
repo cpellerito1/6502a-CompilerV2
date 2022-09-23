@@ -47,6 +47,7 @@ void Compiler::parse(std::vector<Token*> &tokens, int &programCounter) {
     tokenStream = tokens;
     current = 0;
     isErrors = false;
+    ast.clear();
 
     std::cout << "Beginning parse for program " << programCounter << std::endl;
     std::cout << "parse()\n";
@@ -55,8 +56,16 @@ void Compiler::parse(std::vector<Token*> &tokens, int &programCounter) {
     if (!isErrors) {
         std::cout << "Parse finished successfully...\n\nPrinting AST...\n";
         std::cout << ast.toString();
+        puts("");
         Compiler::semanticAnalysis(ast, programCounter);
-    }
+    } else
+        std::cout << "Parse for program " << programCounter << " failed due to error(s)\n";
+
+    // Move to next program if possible
+    if (!isFinished())
+        std::cout << "Beginning Lex for program " << ++programCounter << '\n';
+    
+    return;
 }
 
 
@@ -185,8 +194,6 @@ void parseStringExpr() {
     match(Token::Grammar::L_QUOTE);
     parseCharList();
     match(Token::Grammar::R_QUOTE);
-
-    ast.moveUp();
 }
 
 void parseCharList() {
@@ -200,8 +207,6 @@ void parseCharList() {
         match(Token::Grammar::SPACE);
         parseCharList();
     }
-
-    ast.moveUp();
 }
 
 void parseIntExpr() {

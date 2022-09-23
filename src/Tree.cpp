@@ -2,6 +2,7 @@
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
+#include "Token.h"
 
 class Tree {
     public:
@@ -13,9 +14,9 @@ class Tree {
             std::string name;
             Node* parent;
             std::vector<Node*> children;
-            void *token;
+            Token *token;
 
-            Node(std::string name, void *token = nullptr) {
+            Node(std::string name, Token *token = nullptr) {
                 this->name = name;
                 this->token = token;
             }
@@ -25,7 +26,7 @@ class Tree {
         Node* root;
         Node* current;
 
-        void addNode(std::string name, Kind k, void *t = nullptr) {
+        void addNode(std::string name, Kind k, Token *t = nullptr) {
             Node* n = new Node(name, t);
             if (this->root == nullptr) {
                 this->root = n;
@@ -70,10 +71,15 @@ class Tree {
             // Create variable for the children of the parent
             std::vector<Node*> &pChildren = this->current->parent->children;
             // Get iterator to the 2nd to last node in pChildren
-            std::vector<Node*>::iterator it = std::find(pChildren.end(), pChildren.begin(), this->current) + 1;
+            std::vector<Node*>::iterator it = std::find(pChildren.begin(), pChildren.end(), this->current) - 1;
             // Then add that element to the current nodes children
             this->current->children.push_back(*it);
             // Finally remove the child you just added to the current nodes children from pChildren
             pChildren.erase(it);
+        }
+
+        void clear() {
+            this->root = nullptr;
+            this->current = nullptr;
         }
 };

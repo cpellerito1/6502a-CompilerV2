@@ -1,3 +1,6 @@
+#ifndef TOKEN_H
+#define TOKEN_H
+
 #include <string>
 #include <iostream>
 
@@ -27,3 +30,5 @@ class Token {
         void toString(void);
         static std::string grammarToString(Token::Grammar);
 };
+
+#endif //TOKEN_H
